@@ -62,8 +62,7 @@ rag-project/
 ├── rag.py             # Text RAG: prompt construction + Claude API call
 ├── music_features.py  # Audio feature extraction (tempo, key) via librosa
 ├── music_rag.py        # Music RAG: features -> retrieval -> Claude API call
-├── test_retriever.py  # Unit tests for text chunking and retrieval
-├── test_music.py       # Unit tests for feature extraction and music retrieval
+├── mixing_test.py      # Test for both the router and the mix compatibility
 └── requirements.txt
 ```
 
@@ -107,11 +106,4 @@ python music_rag.py "What key are my slowest songs in?"
   dedicated audio generation model (e.g. MusicGen, Stable Audio) --
   no text-based LLM, including Claude, can output sound.
 
-## Notes / possible extensions
 
-- Swap TF-IDF for a dense embedding model to capture semantic
-  similarity beyond keyword overlap.
-- Add a vector database (e.g. FAISS, Chroma) if the document set grows
-  beyond what fits comfortably in memory.
-- Add citation verification: check that the model's cited source
-  actually contains the claim being attributed to it.
