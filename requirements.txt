@@ -1,7 +1,0 @@
-anthropic
-scikit-learn
-python-dotenv
-pytest
-librosa
-soundfile
-numpy
