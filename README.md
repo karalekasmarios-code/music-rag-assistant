@@ -55,15 +55,13 @@ python -m pytest test_retriever.py -v
 ## Project structure
 
 ```
-rag-project/
-├── docs/              # Source documents (plain .txt) -- text RAG demo
-├── songs/             # Audio files (.wav/.mp3/.flac) -- music RAG demo
+music-rag-assistant/
 ├── retriever.py       # Chunking + TF-IDF retrieval (text)
 ├── rag.py             # Text RAG: prompt construction + Claude API call
 ├── music_features.py  # Audio feature extraction (tempo, key) via librosa
 ├── music_rag.py        # Music RAG: features -> retrieval -> Claude API call
 ├── mixing_test.py      # Test for both the router and the mix compatibility
-└── requirements.txt
+└── .gitignore
 ```
 
 ## Music RAG: retrieving over a personal song library
