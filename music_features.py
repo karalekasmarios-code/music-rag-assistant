@@ -20,11 +20,6 @@ import librosa
 import numpy as np
 
 NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
-
-# Krumhansl-Schmuckler key profiles: relative strength of each scale degree
-# in major/minor keys, used to correlate against a song's actual pitch-class
-# distribution to guess its key. Standard technique in music information
-# retrieval (not something specific to this project).
 MAJOR_PROFILE = np.array([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
 MINOR_PROFILE = np.array([6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17])
 
@@ -38,16 +33,6 @@ class SongFeatures:
     chroma_mean: list = field(default_factory=list)  # 12-dim pitch class energy profile
 
     def to_summary(self) -> str:
-        """Render the extracted features as a text summary -- this is what
-        gets embedded and retrieved, since Claude can only reason over text.
-
-        Includes derived descriptive labels (tempo feel, mode) alongside
-        raw numbers. This matters for retrieval quality: TF-IDF only
-        matches literal words, so a query like "upbeat songs" would never
-        match a summary that only says "Tempo: 123 BPM" -- there's no
-        shared vocabulary. Adding "fast tempo" / "upbeat" as derived text
-        gives natural-language queries something to actually match against.
-        """
         tempo_label = (
             "slow tempo, ballad-like" if self.tempo_bpm < 80 else
             "moderate tempo" if self.tempo_bpm < 115 else
@@ -65,17 +50,6 @@ class SongFeatures:
 
 
 def estimate_key(chroma_mean: np.ndarray) -> str:
-    """
-    Estimate the musical key by correlating the song's average pitch-class
-    energy (chroma) against major/minor key profiles, rotated through all
-    12 possible tonics. Highest correlation wins.
-
-    Returns "Unknown" for degenerate input (e.g. silence, or a perfectly
-    flat pitch-class distribution) where correlation is undefined --
-    np.corrcoef divides by the standard deviation of each vector, which
-    is zero for a constant array, otherwise producing NaN results that
-    would silently compare as False against every candidate key.
-    """
     if np.std(chroma_mean) == 0:
         return "Unknown"
 
