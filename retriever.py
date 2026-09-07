@@ -9,25 +9,21 @@ Uses TF-IDF as the embedding method. This is a sparse, fully offline
 retrieval method (no external model downloads or API calls required),
 which makes the pipeline reproducible and runnable in any environment
 with just scikit-learn installed. Swapping in a dense embedding model
-(e.g. sentence-transformers, or an embeddings API) would only require
-changing the `embed` step below -- the chunking and retrieval interface
-stays the same.
+would only require changing the `embed` step below -- the chunking and
+retrieval interface stays the same.
 """
 
 import os
 import glob
 from dataclasses import dataclass
-
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
 
 @dataclass
 class Chunk:
     text: str
     source: str
     chunk_id: int
-
 
 def load_documents(docs_dir: str) -> list[tuple[str, str]]:
     """Load all .txt files from a directory. Returns (filename, text) pairs."""
@@ -36,7 +32,6 @@ def load_documents(docs_dir: str) -> list[tuple[str, str]]:
         with open(path, "r", encoding="utf-8") as f:
             documents.append((os.path.basename(path), f.read()))
     return documents
-
 
 def chunk_text(text: str, max_words: int = 80, overlap: int = 20) -> list[str]:
     """
@@ -60,7 +55,6 @@ def chunk_text(text: str, max_words: int = 80, overlap: int = 20) -> list[str]:
         start += max_words - overlap
     return chunks
 
-
 class Retriever:
     def __init__(self, docs_dir: str, max_words: int = 80, overlap: int = 20):
         self.chunks: list[Chunk] = []
@@ -82,19 +76,6 @@ class Retriever:
 
         ranked_indices = scores.argsort()[::-1][:top_k]
         return [(self.chunks[i], float(scores[i])) for i in ranked_indices]
-
-
-if __name__ == "__main__":
-    # Quick manual test of the retrieval half, independent of the LLM call.
-    retriever = Retriever(docs_dir="docs")
-
-    test_queries = [
-        "How does SAP Joule reduce manual review of contracts?",
-        "What is the retrieval step in a RAG pipeline?",
-        "What modules do first-year mechanical engineering students take?",
-    ]
-
-    for q in test_queries:
         print(f"\nQuery: {q}")
         for chunk, score in retriever.retrieve(q, top_k=2):
             print(f"  [{score:.3f}] ({chunk.source} #{chunk.chunk_id}) {chunk.text[:100]}...")
