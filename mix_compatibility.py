@@ -39,17 +39,6 @@ CAMELOT = {
 
 
 def camelot_distance(key_a: str, key_b: str) -> int:
-    """
-    Rough harmonic distance between two keys on the Camelot wheel.
-    0 = identical key. 1 = adjacent on the wheel or relative major/minor
-    (generally considered a smooth mix). Larger = more harmonically
-    distant / more likely to clash.
-
-    Returns a large sentinel value if either key is unrecognized
-    (e.g. "Unknown" from a low-confidence key estimate), so unmatched
-    songs sort to the bottom rather than being silently treated as a
-    perfect match.
-    """
     pos_a = CAMELOT.get(key_a)
     pos_b = CAMELOT.get(key_b)
     if pos_a is None or pos_b is None:
@@ -70,14 +59,6 @@ def camelot_distance(key_a: str, key_b: str) -> int:
 
 
 def find_best_mix_pairs(songs: list[SongFeatures], top_n: int = 3, max_bpm_gap: float = 8.0):
-    """
-    Compare every pair of songs in the library and rank them by mix
-    compatibility: BPM closeness first (large tempo gaps make beatmatching
-    hard regardless of key), then harmonic (Camelot) distance as a
-    tiebreaker among tempo-compatible pairs.
-
-    Returns the top_n pairs as (song_a, song_b, bpm_gap, camelot_dist).
-    """
     pairs = []
     for song_a, song_b in itertools.combinations(songs, 2):
         bpm_gap = abs(song_a.tempo_bpm - song_b.tempo_bpm)
