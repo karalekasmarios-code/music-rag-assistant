@@ -80,12 +80,6 @@ def build_prompt(query: str, retrieved) -> str:
     )
 
 def build_comparison_prompt(query: str, songs: list[SongFeatures]) -> str:
-    """
-    For comparison-style questions, the best pairs are computed exactly
-    (see mix_compatibility.py) across the WHOLE library, not a retrieved
-    subset. Claude's job here is narrower: explain/contextualize an
-    already-correct computed answer, not discover it from a sample.
-    """
     best_pairs = find_best_mix_pairs(songs, top_n=3)
     if not best_pairs:
         computed_results = (
