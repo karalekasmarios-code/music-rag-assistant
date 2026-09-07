@@ -26,7 +26,6 @@ class Chunk:
     chunk_id: int
 
 def load_documents(docs_dir: str) -> list[tuple[str, str]]:
-    """Load all .txt files from a directory. Returns (filename, text) pairs."""
     documents = []
     for path in sorted(glob.glob(os.path.join(docs_dir, "*.txt"))):
         with open(path, "r", encoding="utf-8") as f:
@@ -34,14 +33,6 @@ def load_documents(docs_dir: str) -> list[tuple[str, str]]:
     return documents
 
 def chunk_text(text: str, max_words: int = 80, overlap: int = 20) -> list[str]:
-    """
-    Split text into overlapping word-based chunks.
-
-    Overlap prevents relevant context from being cut in half at a chunk
-    boundary -- e.g. if a key sentence spans the end of one chunk and
-    the start of the next, the overlap ensures at least one chunk
-    contains it whole.
-    """
     words = text.split()
     if len(words) <= max_words:
         return [text.strip()]
@@ -70,7 +61,6 @@ class Retriever:
         self.chunk_vectors = self.vectorizer.fit_transform([c.text for c in self.chunks])
 
     def retrieve(self, query: str, top_k: int = 3) -> list[tuple[Chunk, float]]:
-        """Return the top_k most relevant chunks for a query, with similarity scores."""
         query_vector = self.vectorizer.transform([query])
         scores = cosine_similarity(query_vector, self.chunk_vectors)[0]
 
