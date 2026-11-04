@@ -88,7 +88,7 @@ python music_features.py          # test feature extraction on songs/
 python music_rag.py "What key are my slowest songs in?"
 ```
 
-### Known limitations (real, not hidden)
+### Known limitations
 
 - **Tempo octave errors**: beat-tracking can lock onto every other beat
   (or every second beat) instead of the true tempo, returning half or
