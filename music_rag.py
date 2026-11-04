@@ -25,7 +25,6 @@ Query routing:
 """
 
 import sys
-import os
 from dotenv import load_dotenv
 from anthropic import Anthropic
 from sklearn.feature_extraction.text import TfidfVectorizer

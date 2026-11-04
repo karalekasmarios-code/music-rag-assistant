@@ -66,6 +66,15 @@ class Retriever:
 
         ranked_indices = scores.argsort()[::-1][:top_k]
         return [(self.chunks[i], float(scores[i])) for i in ranked_indices]
+
+
+if __name__ == "__main__":
+    import sys
+
+    retriever = Retriever("docs")
+    queries = sys.argv[1:] or ["How does SAP Joule reduce manual review of contracts?"]
+    for q in queries:
         print(f"\nQuery: {q}")
         for chunk, score in retriever.retrieve(q, top_k=2):
             print(f"  [{score:.3f}] ({chunk.source} #{chunk.chunk_id}) {chunk.text[:100]}...")
+

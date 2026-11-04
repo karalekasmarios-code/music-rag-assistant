@@ -1,26 +1,31 @@
-# RAG Pipeline with Claude
+# Music RAG Assistant
 
-A small but complete Retrieval-Augmented Generation (RAG) pipeline: it
-retrieves relevant chunks from a local document set and uses the Claude
-API to generate an answer grounded in that retrieved context, rather
-than relying on the model's training data alone.
+Ask questions about your own music library in plain English, answered by Claude using features extracted from the audio itself.
+
+Claude has no audio input, so the pipeline never sends audio to the model. It extracts tempo and key from each track with `librosa`, turns them into short text summaries, and gives Claude only that data to reason about.
+
+## The key idea: retrieval is not always the right tool
+
+A standard RAG pipeline retrieves the few most similar items and passes them to the model. That works for descriptive questions ("what key are my slowest songs in?"), but fails for comparison questions ("which two songs mix best?"): the true best pair may never be retrieved, so the model can't find it.
+
+This project routes the two kinds of question differently:
+
+| Question type | Example | Path |
+|---|---|---|
+| Descriptive | "What mood are my songs?" | TF-IDF retrieval → Claude |
+| Comparison | "Which songs mix well together?" | Exact pairwise comparison of the whole library → Claude explains the result |
+
+The comparison path scores every pair of tracks by BPM gap and harmonic distance on the Camelot wheel, the system DJs use to judge which keys mix cleanly.
 
 ## How it works
 
-1. **Chunking** (`retriever.py`) — documents in `docs/` are split into
-   overlapping word-based chunks, so relevant information isn't lost at
-   a chunk boundary.
-2. **Retrieval** (`retriever.py`) — chunks are embedded with TF-IDF and
-   ranked against the query using cosine similarity. TF-IDF was chosen
-   over a dense embedding model to keep the pipeline fully offline and
-   reproducible with no external model downloads — the `Retriever`
-   class is written so the embedding method can be swapped out
-   (e.g. for `sentence-transformers` or an embeddings API) without
-   changing the rest of the pipeline.
-3. **Generation** (`rag.py`) — the retrieved chunks are inserted into a
-   prompt and sent to the Claude API, with a system prompt that
-   instructs the model to answer only from the provided context and
-   flag when the context is insufficient.
+1. **Feature extraction** (`music_features.py`): tempo via beat tracking and key via chroma features matched against Krumhansl–Schmuckler key profiles. Each track becomes a summary with descriptive labels ("fast tempo, upbeat", "minor key, darker mood") so word-based retrieval can match natural queries.
+2. **Routing** (`music_rag.py`): keyword-based detection of comparison questions.
+3. **Retrieval** (`music_rag.py`, `retriever.py`): TF-IDF embeddings and cosine similarity, fully offline.
+4. **Exact comparison** (`mix_compatibility.py`): every pair is checked, filtered by BPM gap and ranked by key compatibility first, tempo second.
+5. **Generation**: Claude answers from the extracted data only and is instructed not to claim it has heard the audio.
+
+`rag.py` and `retriever.py` are the same pattern applied to text documents in `docs/`.
 
 ## Setup
 
@@ -34,74 +39,46 @@ Create a `.env` file in the project root:
 ANTHROPIC_API_KEY=your-key-here
 ```
 
+Put audio files (`.wav`, `.mp3`, `.flac`, `.m4a`) in a `songs/` folder.
+
 ## Usage
 
 ```bash
+python music_rag.py "What key are my slowest songs in?"
+python music_rag.py "Which songs mix well together?"
+python music_features.py
+python mix_compatibility.py
 python rag.py "How does SAP Joule reduce manual review of contracts?"
 ```
 
-Test the retrieval step on its own (no API key needed):
+`music_features.py` and `mix_compatibility.py` run without an API key.
+
+## Tests
 
 ```bash
-python retriever.py
+python -m pytest -v
 ```
 
-Run the test suite:
-
-```bash
-python -m pytest test_retriever.py -v
-```
+The suite covers Camelot distance, pair ranking across the full library, key detection, query routing and text retrieval. None of it needs audio files or an API key.
 
 ## Project structure
 
 ```
 music-rag-assistant/
-├── retriever.py       # Chunking + TF-IDF retrieval (text)
-├── rag.py             # Text RAG: prompt construction + Claude API call
-├── music_features.py  # Audio feature extraction (tempo, key) via librosa
-├── music_rag.py        # Music RAG: features -> retrieval -> Claude API call
-├── mixing_test.py      # Test for both the router and the mix compatibility
-└── .gitignore
+├── music_features.py
+├── mix_compatibility.py
+├── music_rag.py
+├── retriever.py
+├── rag.py
+├── docs/
+├── tests/
+├── requirements.txt
+└── pytest.ini
 ```
 
-## Music RAG: retrieving over a personal song library
+## Known limitations
 
-`music_rag.py` extends the same RAG pattern to audio. **Claude cannot
-process raw audio** -- there is no audio input modality in the API --
-so this pipeline never sends audio to the model. Instead:
-
-1. `music_features.py` extracts tempo (BPM) and an estimated musical key
-   from each song using `librosa`, and renders them as a text summary
-   with derived descriptive labels (e.g. "fast tempo, upbeat", "minor
-   key, melancholic/darker mood"). The descriptive labels matter for
-   retrieval quality: TF-IDF only matches literal words, so a query like
-   "upbeat songs" would never match a summary that only said "123 BPM" --
-   there's no shared vocabulary between the two.
-2. Those summaries are embedded and retrieved with the same TF-IDF +
-   cosine similarity approach as the text pipeline.
-3. Retrieved song summaries are given to Claude, which is explicitly
-   instructed to reason about the *extracted data*, not to claim it has
-   listened to the audio.
-
-```bash
-python music_features.py          # test feature extraction on songs/
-python music_rag.py "What key are my slowest songs in?"
-```
-
-### Known limitations
-
-- **Tempo octave errors**: beat-tracking can lock onto every other beat
-  (or every second beat) instead of the true tempo, returning half or
-  double the actual BPM. This is a well-known limitation of onset-based
-  beat trackers generally, not specific to this implementation.
-- **Relative major/minor ambiguity**: C major and A minor share the
-  exact same notes, so pitch-class-based key detection alone cannot
-  always distinguish between them without additional analysis (e.g.
-  weighting which chord the song starts or ends on).
-- **No actual audio generation**: this pipeline gives Claude structured
-  data to reason about (tempo, key, composition suggestions in text/
-  notation form). Generating actual audio would require a separate,
-  dedicated audio generation model (e.g. MusicGen, Stable Audio) --
-  no text-based LLM, including Claude, can output sound.
-
-
+- **Tempo octave errors**: beat tracking can return half or double the true BPM, which can hide pairs that would mix well.
+- **Relative major/minor ambiguity**: C major and A minor share the same notes, so key detection from pitch-class energy alone can confuse them.
+- **Keyword routing**: comparison questions phrased without the expected keywords fall back to retrieval.
+- **No audio output**: Claude gives analysis and suggestions in text; generating sound would need a separate audio model.

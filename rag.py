@@ -13,7 +13,6 @@ python-dotenv, or exported in your shell).
 """
 
 import sys
-import os
 
 from dotenv import load_dotenv
 from anthropic import Anthropic
@@ -58,7 +57,10 @@ def answer_query(query: str, docs_dir: str = "docs", top_k: int = 3, model: str 
         messages=[{"role": "user", "content": prompt}],
     )
 
-    return message.content[0].text
+    for block in message.content:
+        if block.type == "text":
+            return block.text
+    return None
 
 
 if __name__ == "__main__":
